@@ -1,0 +1,36 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Node / web
+node_modules/
+web/dist/
+*.local
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docker
+*.pid
+
+# Preview build artifacts
+# NOTE: preview.html and web/frameworks.json ARE committed (so the single-file
+# app needs no toolchain and can be regenerated reproducibly). Only the local
+# static-serve copy and the SOC-CMM catalog dump are ignored.
+.preview/
+web/catalog.json
+
+# Postgres dumps / backups
+*.sql
+*.sql.gz

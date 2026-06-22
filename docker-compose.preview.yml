@@ -1,0 +1,18 @@
+# ============================================================================
+# Caminho A — App de arquivo único (preview.html) via Docker Compose.
+#
+#   docker compose -f docker-compose.preview.yml up -d --build
+#   # abra http://SEU_SERVIDOR:8080  (login: admin / admin)
+#
+# Não precisa de .env. Dados ficam no navegador (localStorage).
+# A aba "Recomendações" pode chamar a API do Claude direto do navegador —
+# configure a chave em Configurações. Sirva por HTTPS em produção (ver README).
+# ============================================================================
+services:
+  preview:
+    build:
+      context: .
+      dockerfile: Dockerfile.preview
+    restart: unless-stopped
+    ports:
+      - "${PREVIEW_PORT:-8080}:80"
