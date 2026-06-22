@@ -2,9 +2,9 @@
 """Generates the full single-file app (preview.html) with SOC-CMM fidelity."""
 import json, os
 HERE = os.path.dirname(os.path.abspath(__file__))
-with open(os.path.join(HERE, "web", "frameworks.json"), encoding="utf-8") as f:
+with open(os.path.join(HERE, "assets", "frameworks.json"), encoding="utf-8") as f:
     data_json = f.read().replace("</", "<\\/")
-with open(os.path.join(HERE, "web", "vendor", "echarts.min.js"), encoding="utf-8") as f:
+with open(os.path.join(HERE, "assets", "echarts.min.js"), encoding="utf-8") as f:
     echarts_js = f.read()
 
 TEMPLATE = r"""<!doctype html><html lang="pt-BR"><head>

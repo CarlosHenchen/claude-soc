@@ -1,69 +1,19 @@
 # ============================================================================
-# Viaconnect SOC Maturity — on-premise stack (3 containers)
+# Viaconnect SOC Maturity — app de arquivo único (preview.html) via Nginx.
 #
-#   db  : PostgreSQL 16  (internal only, named volume pgdata)
-#   api : FastAPI + Uvicorn (internal only)
-#   web : Nginx serving the React build + reverse proxy of /api -> api
+#   docker compose up -d --build
+#   # abra http://SEU_SERVIDOR:8080   (login: admin / admin)
 #
-# Only `web` publishes a port on the host. db and api stay on the internal
-# network and are NOT reachable from outside the host.
+# Sem banco, sem backend, sem .env. Os dados ficam no navegador (localStorage).
+# A aba "Recomendações" pode chamar a API do Claude direto do navegador —
+# configure a chave em Configurações. Sirva por HTTPS em produção (ver README).
 # ============================================================================
-
 services:
-  db:
-    image: postgres:16
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    networks:
-      - internal
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  api:
+  app:
     build:
-      context: ./api
+      context: .
       dockerfile: Dockerfile
+    image: claude-soc:latest
     restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      # Assembled DB URL (overrides anything in .env to keep it in sync).
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
-    volumes:
-      # Source spreadsheets mounted READ-ONLY from the host. Update them and
-      # call the re-seed endpoint without rebuilding the image.
-      - ./frameworks:/frameworks:ro
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - internal
-    # No `ports:` — API is internal only.
-
-  web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    depends_on:
-      - api
     ports:
-      - "${WEB_PORT:-8080}:80"
-    networks:
-      - internal
-
-networks:
-  internal:
-    driver: bridge
-
-volumes:
-  pgdata:
-    name: soc_maturity_pgdata
+      - "${PORT:-8080}:80"

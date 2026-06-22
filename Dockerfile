@@ -1,11 +1,12 @@
 # ============================================================================
-# Caminho A — App de arquivo único (preview.html)
+# Viaconnect SOC Maturity — app de arquivo único (preview.html)
 #
 # Serve o preview.html (auto-contido: HTML + JS + ECharts + dados embutidos)
 # por Nginx. Sem banco, sem backend. Persistência no localStorage do navegador.
 #
-#   docker build -f Dockerfile.preview -t claude-soc-preview .
-#   docker run -d -p 8080:80 claude-soc-preview   # http://localhost:8080
+#   docker build -t claude-soc .
+#   docker run -d -p 8080:80 claude-soc       # http://localhost:8080
+# (ou simplesmente: docker compose up -d --build)
 # ============================================================================
 FROM nginx:1.27-alpine
 

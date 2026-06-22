@@ -1,15 +1,12 @@
-# Normalize line endings. Shell scripts MUST be LF or they break in Linux
-# containers (the api entrypoint, env setup, etc.).
+# Normalize line endings (LF) so the repo is consistent across OSes.
 * text=auto eol=lf
-*.sh text eol=lf
-api/entrypoint.sh text eol=lf
-scripts/*.sh text eol=lf
 
-# Treat these as binary (no EOL normalization / no diff noise).
+# Binary assets — no EOL normalization / no diff noise.
 *.xlsx binary
 *.png binary
 *.jpg binary
 *.ico binary
-web/vendor/echarts.min.js binary
-api/app/assets/echarts.min.js binary
+assets/echarts.min.js binary
+
+# Generated single-file app — committed, but don't diff/normalize it.
 preview.html -text

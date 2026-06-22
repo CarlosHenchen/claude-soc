@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Extracts frameworks into web/frameworks.json with SOC-CMM formula fidelity.
+"""Extracts frameworks into assets/frameworks.json with SOC-CMM formula fidelity.
 
 Output schema (single JSON object):
 {
@@ -40,8 +40,8 @@ def _load(name, path, p=None):
     m = importlib.util.module_from_spec(spec)
     if p: m.__package__ = p
     sys.modules[name] = m; spec.loader.exec_module(m); return m
-_load("ing.base", os.path.join(HERE, "api/app/ingest/base.py"))
-vp = _load("ing.viaconnect_parser", os.path.join(HERE, "api/app/ingest/viaconnect_parser.py"), p="ing")
+_load("ing.base", os.path.join(HERE, "ingest/base.py"))
+vp = _load("ing.viaconnect_parser", os.path.join(HERE, "ingest/viaconnect_parser.py"), p="ing")
 
 def _scale_blocks(path):
     """Parse section 3 (Escalas de maturidade) of the Framework sheet into blocks
@@ -215,7 +215,7 @@ def soc_catalog(path):
 # ----------------------------------------------------------------------------
 result = {"viaconnect": viaconnect(),
           "soc": soc_catalog(DL + "63-soc-cmm-242-advanced.xlsx")}
-with open(os.path.join(HERE, "web", "frameworks.json"), "w", encoding="utf-8") as f:
+with open(os.path.join(HERE, "assets", "frameworks.json"), "w", encoding="utf-8") as f:
     json.dump(result, f, ensure_ascii=False)
 
 soc = result["soc"]
@@ -227,4 +227,4 @@ print(f"soc domains={len(soc['domains'])} aspects={na} M={nm} C={nc}")
 for d in soc["domains"]:
     print(f"  {d['key']:11}", ", ".join(f"{a['name']}({len([q for q in a['questions'] if q['type']=='M'])}M"
           + (f"+{len([q for q in a['questions'] if q['type']=='C'])}C" if a['hasCapability'] else "") + ")" for a in d["aspects"]))
-print("bytes:", os.path.getsize(os.path.join(HERE, "web", "frameworks.json")))
+print("bytes:", os.path.getsize(os.path.join(HERE, "assets", "frameworks.json")))
