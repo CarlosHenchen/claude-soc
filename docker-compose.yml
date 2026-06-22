@@ -1,19 +1,49 @@
 # ============================================================================
-# Viaconnect SOC Maturity — app de arquivo único (preview.html) via Nginx.
+# Viaconnect SOC Maturity — app web completo (3 contêineres).
+#
+#   db   : PostgreSQL 16        (interno; volume nomeado pgdata)
+#   api  : FastAPI/Uvicorn      (interno; guarda o estado em JSONB)
+#   web  : Nginx (SPA + proxy /api -> api)
 #
 #   docker compose up -d --build
 #   # abra http://SEU_SERVIDOR:8080   (login: admin / admin)
 #
-# Sem banco, sem backend, sem .env. Os dados ficam no navegador (localStorage).
-# A aba "Recomendações" pode chamar a API do Claude direto do navegador —
-# configure a chave em Configurações. Sirva por HTTPS em produção (ver README).
+# Funciona sem .env (usa os defaults abaixo). Para trocar senha do banco/porta,
+# crie um .env com POSTGRES_PASSWORD / PORT. Só o `web` publica porta no host.
 # ============================================================================
 services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: claude-soc:latest
+  db:
+    image: postgres:16
     restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-soc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-soc}
+      POSTGRES_DB: ${POSTGRES_DB:-soc}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-soc} -d ${POSTGRES_DB:-soc}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-soc}:${POSTGRES_PASSWORD:-soc}@db:5432/${POSTGRES_DB:-soc}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./web
+    restart: unless-stopped
+    depends_on:
+      - api
     ports:
       - "${PORT:-8080}:80"
+
+volumes:
+  pgdata:
+    name: soc_maturity_pgdata

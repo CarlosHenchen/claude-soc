@@ -4,7 +4,7 @@
     {
       "name": "preview",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "4173", "--directory", ".preview"],
+      "runtimeArgs": ["-m", "http.server", "4173", "--directory", "web"],
       "port": 4173
     }
   ]

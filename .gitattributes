@@ -7,6 +7,4 @@
 *.jpg binary
 *.ico binary
 assets/echarts.min.js binary
-
-# Generated single-file app — committed, but don't diff/normalize it.
-preview.html -text
+web/echarts.min.js binary
