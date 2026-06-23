@@ -538,12 +538,16 @@ function orgAssessment(o){
         <td><span class="badge ${a.status==='completed'?'g':'a'}">${a.status==='completed'?'Concluída':'Em andamento'}</span></td>
         <td>${dd.overall==null?'—':Math.round(dd.overall)+'%'}</td><td class="mini">${dd.answered}/${dd.total}</td><td class="mini">${esc(a.filledBy||'—')}</td>
         <td style="text-align:right;white-space:nowrap"><button class="btn ghost sm" onclick="go('run',{assessmentId:${a.id},dIdx:0,aIdx:0})">Preencher</button>
-          <button class="btn ghost sm" onclick="go('dashboard',{assessmentId:${a.id}})">Dashboard</button><button class="btn danger sm" onclick="delAsm(${a.id})">×</button></td></tr>`;}).join('');
+          <button class="btn ghost sm" onclick="go('dashboard',{assessmentId:${a.id}})">Dashboard</button><button class="btn ghost sm" onclick="exportXlsx(${a.id})" title="Exportar assessment em XLSX">⤓ XLSX</button><button class="btn danger sm" onclick="delAsm(${a.id})">×</button></td></tr>`;}).join('');
     const naAsp=fw.domains.reduce((s,d)=>s+d.aspects.length,0);
     blocks+=`<div class="card"><h3>${esc(fw.name)} <span class="badge b">${fw.domains.length} domínios · ${naAsp} aspectos</span>
         <button class="btn sm" style="margin-left:auto" onclick="newCycle(${o.id},'${fw.slug}')">+ Novo ciclo</button></h3>
       <div class="pad">${list.length?`<table><tr><th>Ciclo</th><th>Data</th><th>Status</th><th>Geral</th><th>Cobertura</th><th>Preenchido por</th><th></th></tr>${rows}</table>`:'<div class="mini">Nenhum ciclo ainda.</div>'}</div></div>`;});
-  return `<p class="mini" style="margin:-6px 0 14px">Os três tipos de avaliação. Crie ciclos para acompanhar a evolução.</p>${blocks}`;}
+  return `<div class="row no-print" style="align-items:center;margin:-6px 0 14px;gap:10px">
+      <p class="mini" style="margin:0;flex:1;min-width:220px">Os três tipos de avaliação. Crie ciclos para acompanhar a evolução. Exporte cada ciclo (botão <b>⤓ XLSX</b>) ou importe um arquivo exportado — organização · domínio · nota · meta.</p>
+      <input type="file" id="impxlsx" accept=".xlsx,.xls" style="display:none" onchange="if(this.files&&this.files[0]){importXlsx(${o.id},this.files[0]);this.value='';}"/>
+      <button class="btn ghost sm" onclick="document.getElementById('impxlsx').click()" title="Importar um assessment em XLSX (cria um ciclo)">⤴ Importar XLSX</button>
+    </div>${blocks}`;}
 
 // ---- Evolução de postura (assessment de Domínios por ciclos) ----
 function orgEvolucao(o){
@@ -670,6 +674,67 @@ function newCycle(orgId,slug){const n=asmsFor(orgId,slug).length+1,today=new Dat
 function createCycle(orgId,slug){const a={id:nid(),orgId,frameworkSlug:slug,cycle:document.getElementById('cy').value.trim()||'Ciclo',date:document.getElementById('cd').value,status:'in_progress',filledBy:null};
   db.assessments.push(a);db.answers[a.id]={};save();closeModal();go('run',{assessmentId:a.id,dIdx:0,aIdx:0});}
 function delAsm(id){if(!confirm('Excluir este ciclo?'))return;db.assessments=db.assessments.filter(a=>a.id!==id);delete db.answers[id];save();render();}
+
+// ===== Exportar / Importar assessment em XLSX (organização · domínio · nota · meta) =====
+function assessmentRows(o,a){
+  const fw=FW[a.frameworkSlug],A=ans(a.id),rows=[];
+  fw.domains.forEach(function(d){d.aspects.forEach(function(asp){asp.questions.forEach(function(q){
+    const av=A[q.code]||{};
+    rows.push({'Organização':o.name,'Framework':fw.name,'Ciclo':a.cycle,'Domínio':d.name,
+      'Aspecto':asp.name,'Código':q.code,'Item':q.text,
+      'Nota':(av.cur==null?'':av.cur),'Meta':(av.tgt==null?'':av.tgt)});
+  });});});
+  return rows;
+}
+function exportXlsx(aid){
+  const a=asmById(aid);if(!a)return;const o=orgById(a.orgId);
+  if(typeof XLSX==='undefined'){alert('Biblioteca XLSX não carregada.');return;}
+  const header=['Organização','Framework','Ciclo','Domínio','Aspecto','Código','Item','Nota','Meta'];
+  const ws=XLSX.utils.json_to_sheet(assessmentRows(o,a),{header:header});
+  ws['!cols']=[{wch:22},{wch:24},{wch:18},{wch:26},{wch:26},{wch:12},{wch:50},{wch:7},{wch:7}];
+  const meta=XLSX.utils.aoa_to_sheet([['frameworkSlug','orgName','cycle','exportedAt'],
+    [a.frameworkSlug,o.name,a.cycle,new Date().toISOString()]]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Assessment');
+  XLSX.utils.book_append_sheet(wb,meta,'_meta');
+  const safe=function(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\w\-]+/g,'_').replace(/_+/g,'_').slice(0,40);};
+  XLSX.writeFile(wb,'assessment_'+safe(o.name)+'_'+safe(a.frameworkSlug)+'_'+safe(a.cycle)+'.xlsx');
+}
+function importXlsx(orgId,file){
+  if(typeof XLSX==='undefined'){alert('Biblioteca XLSX não carregada.');return;}
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      const ws=wb.Sheets['Assessment']||wb.Sheets[wb.SheetNames[0]];
+      if(!ws){alert('Planilha vazia ou inválida.');return;}
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      let slug=null,cycleName='Importado';
+      if(wb.Sheets['_meta']){const m=(XLSX.utils.sheet_to_json(wb.Sheets['_meta'],{defval:''})[0])||{};
+        if(m.frameworkSlug)slug=m.frameworkSlug;if(m.cycle)cycleName=String(m.cycle);}
+      if((!slug||!FW[slug])&&rows[0]){const fn=rows[0]['Framework'];
+        const hit=Object.keys(FW).find(function(s){return FW[s].name===fn;});if(hit)slug=hit;
+        if(rows[0]['Ciclo'])cycleName=String(rows[0]['Ciclo']);}
+      if(!slug||!FW[slug]){alert('Não consegui identificar o framework do arquivo (coluna "Framework" ou aba "_meta").');return;}
+      const fw=FW[slug],valid={};
+      fw.domains.forEach(function(d){d.aspects.forEach(function(asp){asp.questions.forEach(function(q){valid[q.code]=true;});});});
+      const answers={};let n=0,ignored=0;
+      rows.forEach(function(r){const code=String(r['Código']||'').trim();if(!code)return;
+        if(!valid[code]){ignored++;return;}
+        const cur=r['Nota'],meta=r['Meta'];
+        answers[code]={cur:(cur===''||cur==null)?null:Number(cur),tgt:(meta===''||meta==null)?null:Number(meta)};n++;});
+      if(!n){alert('Nenhum item válido encontrado para o framework "'+fw.name+'".');return;}
+      const a={id:nid(),orgId:orgId,frameworkSlug:slug,cycle:cycleName+' (importado)',
+        date:new Date().toISOString().slice(0,10),status:'in_progress',
+        filledBy:(curUser()&&(curUser().name||curUser().username))||'import'};
+      db.assessments.push(a);db.answers[a.id]=answers;
+      const dd=dashboard(fw,answers);a.status=(dd.answered>=dd.total)?'completed':'in_progress';
+      save();toast('Assessment importado em '+(orgById(orgId).name)+': '+n+' itens'+(ignored?(' ('+ignored+' ignorados)'):''));
+      go('org',{orgId:orgId,orgTab:'assessment'});
+    }catch(err){alert('Falha ao importar XLSX: '+((err&&err.message)||err));}
+  };
+  reader.readAsArrayBuffer(file);
+}
 
 // ===== run (sidebar navigation + segmented level selector) =====
 function viewRun(){

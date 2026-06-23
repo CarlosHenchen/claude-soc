@@ -8,3 +8,5 @@
 *.ico binary
 assets/echarts.min.js binary
 web/echarts.min.js binary
+assets/xlsx.full.min.js binary
+web/xlsx.full.min.js binary

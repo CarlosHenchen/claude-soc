@@ -4,6 +4,6 @@ FROM nginx:1.27-alpine
 
 RUN rm -f /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/conf.d/app.conf
-COPY index.html app.js data.js echarts.min.js /usr/share/nginx/html/
+COPY index.html app.js data.js echarts.min.js xlsx.full.min.js /usr/share/nginx/html/
 
 EXPOSE 80
